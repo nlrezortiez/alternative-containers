@@ -5,56 +5,130 @@
 #include <memory>
 #include <stdexcept>
 
-// TODO: implement random_access_iterator
-//       implement class-member funcs
-//       must satisfy AllocatorAwareContainer Policy
+//TODO:     implement class-member funcs
+//          must satisfy AllocatorAwareContainer Policy
 
 namespace rzt {
     template <typename T, typename Allocator = std::allocator<T>>
     class vector {
     public:
-        typedef vector<T, Allocator> this_type;
-        typedef T value_type;
-        typedef T* pointer;
-        typedef const T* const_pointer;
-        typedef T& reference;
-        typedef const T& const_reference;
-        typedef T&& rvalue;
 
-        typedef typename Allocator::difference_type difference_type;
-        typedef typename Allocator::size_type size_type;
-        typedef Allocator allocator_type;
-        typedef std::allocator_traits<allocator_type> allocator_traits;
+        using allocator_traits = std::allocator_traits<Allocator>;
+        using allocator_type = typename allocator_traits::allocator_type;
+        using value_type = typename allocator_traits::value_type;
+        using reference = T&;
+        using const_reference = const T&;
+        using pointer = typename allocator_traits::pointer;
+        using difference_type = typename allocator_traits::difference_type;
+        using size_type = typename allocator_traits::size_type;
 
-        template <bool ISConst>
+        template <typename U>
         struct common_iterator {
         public:
-            common_iterator(pointer ptr) : ptr_(ptr) {
-            }
+            using difference_type = typename allocator_traits::difference_type;
+            using value_type = typename allocator_traits::value_type;
+            using reference = U&;
+            using const_reference = const U&;
+            using pointer = typename allocator_traits::pointer;
+            using iterator_category = std::random_access_iterator_tag;
+            
+            common_iterator() : ptr_() {}
+            common_iterator(U* ptr) : ptr_(ptr) {}
+            common_iterator(const common_iterator& other) : ptr_(other.ptr_) {} 
 
-            std::conditional_t<ISConst, const_reference, reference> operator*() {
+            reference operator*() const {
                 return *ptr_;
             }
 
-            std::conditional<ISConst, const_pointer, pointer> operator->() {
+            pointer operator->() {
                 return ptr_;
             }
 
-            common_iterator<ISConst>& operator++() {
+            reference operator[](size_type n) const {
+                return *(ptr_ + n);
+            }
+
+            common_iterator& operator=(const common_iterator& other) {
+                if (this != &other) {
+                    ptr_ = other.ptr_;
+                }
+                return *this;
+            }
+
+            common_iterator& operator++() {
                 ++ptr_;
                 return *this;
             }
 
-            common_iterator<ISConst> operator++(int) {
-                return common_iterator<ISConst>(ptr_++);
+            common_iterator operator++(int) {
+                return common_iterator(ptr_++);
+            }
+
+            common_iterator& operator--() {
+                --ptr_;
+                return *this;
+            }
+
+            common_iterator operator--(int) {
+                return common_iterator(ptr_--);
+            }
+
+            common_iterator& operator+=(size_type n) {
+                ptr_ += n;
+                return *this;
+            }
+
+            common_iterator operator+(size_type n) const {
+                return common_iterator(ptr_ + n);
+            }
+
+            common_iterator& operator-=(size_type n) {
+                ptr_ -= n;
+                return *this;
+            }
+
+            common_iterator operator-(size_type n) const {
+                return common_iterator(ptr_ - n);
+            }
+
+            difference_type operator-(const common_iterator& other) const {
+                return ptr_ - other.ptr_;
+            }
+
+            bool operator==(const common_iterator& rhs) const {
+                return ptr_ == rhs.ptr_;
+            }
+            
+            bool operator!=(const common_iterator& rhs) const {
+                return !(ptr_ == rhs.ptr_);
+            }
+            
+            bool operator<(const common_iterator& rhs) const {
+                return (*this != rhs && this - rhs < 0);  
+            }
+
+            bool operator<=(const common_iterator& rhs) const {
+                return (*this - rhs >= 0);
+            }
+
+            bool operator>(const common_iterator& rhs) const {
+                return rhs < *this; 
+            }
+
+            bool operator>=(const common_iterator& rhs) const {
+                return rhs <= *this;
+            }
+
+            friend common_iterator operator+(size_type lhs, const common_iterator& rhs) {
+                return common_iterator(rhs + lhs);
             }
 
         private:
-            std::conditional_t<ISConst, const_pointer, pointer> ptr_;
+            U* ptr_;
         };
 
-        typedef common_iterator<false> iterator;
-        typedef common_iterator<true> const_iterator;
+        typedef common_iterator<T> iterator;
+        typedef common_iterator<const T> const_iterator;
         typedef std::reverse_iterator<iterator> reverse_iterator;
         typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
@@ -93,7 +167,7 @@ namespace rzt {
         void emplace();
         void erase();
         void push_back(const_reference value); // T -> CopyInsertable && MoveInsertable
-        //void push_back(rvalue value);
+        // void push_back(rvalue value);
 
         template <typename... Args>
         reference emplace_back(Args&&... args);
@@ -126,16 +200,18 @@ namespace rzt {
 
     template <typename T, typename Allocator>
     typename vector<T, Allocator>::const_reference vector<T, Allocator>::at(size_t index) const {
-       if (index > size()) throw std::out_of_range("out_of_range");
-       return *(data_start_ + index);
+        if (index > size())
+            throw std::out_of_range("out_of_range");
+        return *(data_start_ + index);
     }
 
     template <typename T, typename Allocator>
     typename vector<T, Allocator>::reference vector<T, Allocator>::at(size_t index) {
-        if (index > size()) throw std::out_of_range("out_of_range");
+        if (index > size())
+            throw std::out_of_range("out_of_range");
         return *(data_start_ + index);
     }
-    
+
     template <typename T, typename Allocator>
     typename vector<T, Allocator>::reference vector<T, Allocator>::operator[](size_type index) {
         return *(data_start_ + index);
@@ -169,17 +245,17 @@ namespace rzt {
         }
         allocator_traits::deallocate(allocator, data_start_, i); // i == size();
         data_start_ = new_storage;
-        if (new_capacity == 1) data_end_ = data_start_;
+        if (new_capacity == 1)
+            data_end_ = data_start_;
         storage_end_ = data_start_ + new_capacity;
     }
 
     template <typename T, typename Allocator>
-    void vector<T, Allocator>::push_back(const T& value) {
+    void vector<T, Allocator>::push_back(const_reference value) {
         if (data_end_ == storage_end_) {
             reserve(capacity() > 0 ? 2 * capacity() : 1);
         }
         allocator_traits::construct(allocator, data_end_++, value);
-
     }
 
     template <typename T, typename Allocator>

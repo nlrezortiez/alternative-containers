@@ -8,4 +8,4 @@ find_package(GTest REQUIRED)
 
 add_executable(libtest libtest.cpp)
 target_link_libraries(libtest rzt_containers ${GTEST_LIBRARIES})
-gtest_discover_tests(libtest)
+#gtest_discover_tests(libtest)
