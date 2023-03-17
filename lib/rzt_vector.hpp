@@ -104,7 +104,7 @@ namespace rzt {
             }
             
             bool operator<(const common_iterator& rhs) const {
-                return (*this != rhs && this - rhs < 0);  
+                return (*this != rhs && *this - rhs < 0);  
             }
 
             bool operator<=(const common_iterator& rhs) const {
@@ -134,7 +134,7 @@ namespace rzt {
 
         vector() : data_start_(), data_end_(), storage_end_() {
         }
-        explicit vector(size_type n, const T& value = T(), const Allocator& alloc = Allocator()) : vector() {
+        explicit vector(size_type n, const_reference value = T(), const Allocator& alloc = Allocator()) : vector() {
             resize(n, value);
         }
 
@@ -185,7 +185,7 @@ namespace rzt {
 
     template <typename T, typename Allocator>
     typename vector<T, Allocator>::size_type vector<T, Allocator>::size() const {
-        return data_end_ - data_start_;
+        return data_end_ == nullptr ? 0 : data_end_ - data_start_;
     }
 
     template <typename T, typename Allocator>
@@ -264,10 +264,12 @@ namespace rzt {
     }
 
     template <typename T, typename Allocator>
-    void vector<T, Allocator>::resize(std::size_t n, const T& value) {
+    void vector<T, Allocator>::resize(std::size_t n, const_reference value) {
         if (n > capacity()) {
-            reserve(n);
-            for (int i = size(); i < n; ++i) {
+            size_t i = size();
+            reserve(capacity() + n);
+            data_end_ = data_start_ + n;
+            for (; i < n; ++i) {
                 allocator_traits::construct(allocator, data_start_ + i, value);
             }
             storage_end_ = data_end_ = data_start_ + n;
