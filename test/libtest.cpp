@@ -1,15 +1,25 @@
 #include "../lib/rzt_stack.hpp"
 #include "../lib/rzt_vector.hpp"
 
+#include <string>
 #include <vector>
 #include <iostream>
 #include <iterator>
+#include <algorithm>
 
 #include <gtest/gtest.h>
 
 template <typename T>
 void sandbox() {
-    static_assert(std::random_access_iterator<typename rzt::vector<T>::iterator>, "doesn't satisfy rat policy");
+    
+    std::string string = "jopa";
+    std::string string1 = "jopa2";
+    rzt::vector<T> v;
+    for (int i = 0; i < 6; ++i) {
+        v.push_back(string);
+        std::cout << v.capacity() << " " << v.size() << std::endl;
+    }
+    std::cout << v[2];
 }
 
 int main(int argc, char *argv[]) {

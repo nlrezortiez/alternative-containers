@@ -5,14 +5,14 @@
 #include <memory>
 #include <stdexcept>
 
-//TODO:     implement class-member funcs
-//          must satisfy AllocatorAwareContainer Policy
+// TODO:     implement class-member funcs
+//           must satisfy AllocatorAwareContainer Policy
+//           fix problem given in test/libtst.cpp   
 
 namespace rzt {
     template <typename T, typename Allocator = std::allocator<T>>
     class vector {
     public:
-
         using allocator_traits = std::allocator_traits<Allocator>;
         using allocator_type = typename allocator_traits::allocator_type;
         using value_type = typename allocator_traits::value_type;
@@ -31,10 +31,13 @@ namespace rzt {
             using const_reference = const U&;
             using pointer = typename allocator_traits::pointer;
             using iterator_category = std::random_access_iterator_tag;
-            
-            common_iterator() : ptr_() {}
-            common_iterator(U* ptr) : ptr_(ptr) {}
-            common_iterator(const common_iterator& other) : ptr_(other.ptr_) {} 
+
+            common_iterator() : ptr_() {
+            }
+            common_iterator(U* ptr) : ptr_(ptr) {
+            }
+            common_iterator(const common_iterator& other) : ptr_(other.ptr_) {
+            }
 
             reference operator*() const {
                 return *ptr_;
@@ -98,13 +101,13 @@ namespace rzt {
             bool operator==(const common_iterator& rhs) const {
                 return ptr_ == rhs.ptr_;
             }
-            
+
             bool operator!=(const common_iterator& rhs) const {
                 return !(ptr_ == rhs.ptr_);
             }
-            
+
             bool operator<(const common_iterator& rhs) const {
-                return (*this != rhs && *this - rhs < 0);  
+                return (*this != rhs && *this - rhs < 0);
             }
 
             bool operator<=(const common_iterator& rhs) const {
@@ -112,7 +115,7 @@ namespace rzt {
             }
 
             bool operator>(const common_iterator& rhs) const {
-                return rhs < *this; 
+                return rhs < *this;
             }
 
             bool operator>=(const common_iterator& rhs) const {
@@ -156,6 +159,7 @@ namespace rzt {
         size_type size() const;
         void reserve(size_t new_capacity);
         size_type capacity() const;
+        void resize(size_t n, const T& value = T());
 
         reference operator[](size_type index);
         const_reference operator[](size_type index) const;
@@ -163,24 +167,31 @@ namespace rzt {
         const_reference at(size_t index) const;
 
         void clear();
-        void insert();
-        void emplace();
-        void erase();
+        iterator insert(const_iterator pos, const_reference value);
+        iterator insert(const_iterator pos, value_type&& value);
+        iterator insert(const_iterator pos, size_type count, const_reference value);
+        iterator insert(const_iterator pos, size_type count, value_type&& value);
+
+        template <typename... Args>
+        iterator emplace(const_iterator pos, Args&&... args);
+
+        template <typename iterator_type>
+        void erase(iterator_type pos);
+
         void push_back(const_reference value); // T -> CopyInsertable && MoveInsertable
-        // void push_back(rvalue value);
+        //void push_back(value_type&& value);
 
         template <typename... Args>
         reference emplace_back(Args&&... args);
 
         void pop_back();
-        void resize(size_t n, const T& value = T());
 
     private:
         pointer data_start_;
         pointer data_end_;
         pointer storage_end_;
 
-        Allocator allocator;
+        allocator_type allocator;
     };
 
     template <typename T, typename Allocator>
@@ -244,16 +255,20 @@ namespace rzt {
             allocator_traits::destroy(allocator, data_start_ + i);
         }
         allocator_traits::deallocate(allocator, data_start_, i); // i == size();
+
         data_start_ = new_storage;
-        if (new_capacity == 1)
-            data_end_ = data_start_;
+        data_end_ = data_start_ + i;
         storage_end_ = data_start_ + new_capacity;
     }
 
     template <typename T, typename Allocator>
     void vector<T, Allocator>::push_back(const_reference value) {
         if (data_end_ == storage_end_) {
-            reserve(capacity() > 0 ? 2 * capacity() : 1);
+            if (capacity() > 0) {
+                reserve(2 * capacity());
+            } else {
+                reserve(1);
+            }
         }
         allocator_traits::construct(allocator, data_end_++, value);
     }
@@ -286,6 +301,14 @@ namespace rzt {
                 data_end_ = data_start_ + n;
             }
         }
+    }
+
+    template <typename T, typename Allocator>
+    void vector<T, Allocator>::clear() {
+       for (int i = 0; i < size(); ++i) {
+            allocator_traits::destroy(allocator, data_start_ + i);
+       } 
+       data_end_ = data_start_;
     }
 
     template <typename T, typename Allocator>
