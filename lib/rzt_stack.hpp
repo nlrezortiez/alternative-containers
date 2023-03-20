@@ -20,7 +20,7 @@ namespace rzt {
     struct list_iterator {
         typedef list_iterator this_type;
         typedef ListNode<T> list_node;
-        typedef ptrdiff_t difference_type;
+        typedef std::ptrdiff_t difference_type;
         typedef std::forward_iterator_tag iterator_category;
 
         typedef T value_type;

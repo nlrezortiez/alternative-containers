@@ -1,3 +1,5 @@
+#include "iterator/random_access_iterator.hpp"
+
 template<typename T, typename Alloc>
 class circular_buffer {
 public:
@@ -7,7 +9,7 @@ public:
     typedef Alloc allocator_type;
     typedef circular_buffer& reference;
     typedef const circular_buffer& const_reference;
-    typedef circular_buffer_iterator::iterator iterator;
+    typedef circular_buffer_iterator::iterator iterator; //?? iterator ?? 
     typedef circular_buffer_iterator::const_iterator const_iterator;
     typedef circular_buffer_iterator::reverse_iterator reverse_iterator;
     typedef circular_buffer_iterator::const_reverse_iterator const_reverse_iterator;

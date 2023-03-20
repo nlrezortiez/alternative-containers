@@ -1,12 +1,13 @@
 #pragma once
 
+#include "iterator/random_access_iterator.hpp"
+
 #include <cstddef>
-#include <iterator>
 #include <memory>
 #include <stdexcept>
 
-// TODO:     implement erase(), rvalue-require methods.
-//           must satisfy AllocatorAwareContainer Policy
+// TODO:     implement erase(), rvalue-require methods, multiple values insert().
+//           must satisfy AllocatorAwareContainer Policy [+];
 
 namespace rzt {
     template <typename T, typename Allocator = std::allocator<T>>
@@ -21,120 +22,11 @@ namespace rzt {
         using difference_type = typename allocator_traits::difference_type;
         using size_type = typename allocator_traits::size_type;
 
-        template <typename U>
-        struct common_iterator {
-        public:
-            using difference_type = typename allocator_traits::difference_type;
-            using value_type = typename allocator_traits::value_type;
-            using reference = U&;
-            using const_reference = const U&;
-            using pointer = typename allocator_traits::pointer;
-            using iterator_category = std::random_access_iterator_tag;
 
-            common_iterator() : ptr_() {
-            }
-            common_iterator(U* ptr) : ptr_(ptr) {
-            }
-            common_iterator(const common_iterator& other) : ptr_(other.ptr_) {
-            }
-
-            operator common_iterator<const U>() { return common_iterator<const U>(ptr_); }
-
-            reference operator*() const {
-                return *ptr_;
-            }
-
-            pointer operator->() {
-                return ptr_;
-            }
-
-            reference operator[](size_type n) const {
-                return *(ptr_ + n);
-            }
-
-            common_iterator& operator=(const common_iterator& other) {
-                if (this != &other) {
-                    ptr_ = other.ptr_;
-                }
-                return *this;
-            }
-
-            common_iterator& operator++() {
-                ++ptr_;
-                return *this;
-            }
-
-            common_iterator operator++(int) {
-                return common_iterator(ptr_++);
-            }
-
-            common_iterator& operator--() {
-                --ptr_;
-                return *this;
-            }
-
-            common_iterator operator--(int) {
-                return common_iterator(ptr_--);
-            }
-
-            common_iterator& operator+=(size_type n) {
-                ptr_ += n;
-                return *this;
-            }
-
-            common_iterator operator+(size_type n) const {
-                return common_iterator(ptr_ + n);
-            }
-
-            common_iterator& operator-=(size_type n) {
-                ptr_ -= n;
-                return *this;
-            }
-
-            common_iterator operator-(size_type n) const {
-                return common_iterator(ptr_ - n);
-            }
-
-            difference_type operator-(const common_iterator& other) const {
-                return ptr_ - other.ptr_;
-            }
-
-            bool operator==(const common_iterator& rhs) const {
-                return ptr_ == rhs.ptr_;
-            }
-
-            bool operator!=(const common_iterator& rhs) const {
-                return !(ptr_ == rhs.ptr_);
-            }
-
-            bool operator<(const common_iterator& rhs) const {
-                return (*this != rhs && *this - rhs < 0);
-            }
-
-            bool operator<=(const common_iterator& rhs) const {
-                return (*this - rhs >= 0);
-            }
-
-            bool operator>(const common_iterator& rhs) const {
-                return rhs < *this;
-            }
-
-            bool operator>=(const common_iterator& rhs) const {
-                return rhs <= *this;
-            }
-
-            friend common_iterator operator+(size_type lhs, const common_iterator& rhs) {
-                return common_iterator(rhs + lhs);
-            }
-
-        private:
-            U* ptr_;
-        };
-
-        typedef common_iterator<T> iterator;
-        typedef common_iterator<const T> const_iterator;
-        typedef std::reverse_iterator<iterator> reverse_iterator;
-        typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+        using iterator = common_iterator<T>;
+        using const_iterator = common_iterator<const T>;
+        using reverse_iterator = std::reverse_iterator<iterator>;
+        using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
         vector() : data_start_(), data_end_(), storage_end_() {
         }
