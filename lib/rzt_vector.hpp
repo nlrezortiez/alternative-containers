@@ -5,9 +5,8 @@
 #include <memory>
 #include <stdexcept>
 
-// TODO:     implement class-member funcs
+// TODO:     implement erase(), rvalue-require methods.
 //           must satisfy AllocatorAwareContainer Policy
-//           fix problem given in test/libtst.cpp   
 
 namespace rzt {
     template <typename T, typename Allocator = std::allocator<T>>
@@ -38,6 +37,8 @@ namespace rzt {
             }
             common_iterator(const common_iterator& other) : ptr_(other.ptr_) {
             }
+
+            operator common_iterator<const U>() { return common_iterator<const U>(ptr_); }
 
             reference operator*() const {
                 return *ptr_;
@@ -160,17 +161,17 @@ namespace rzt {
         void reserve(size_t new_capacity);
         size_type capacity() const;
         void resize(size_t n, const T& value = T());
+        void clear();
 
         reference operator[](size_type index);
         const_reference operator[](size_type index) const;
         reference at(size_t index);
         const_reference at(size_t index) const;
 
-        void clear();
         iterator insert(const_iterator pos, const_reference value);
-        iterator insert(const_iterator pos, value_type&& value);
-        iterator insert(const_iterator pos, size_type count, const_reference value);
-        iterator insert(const_iterator pos, size_type count, value_type&& value);
+        // iterator insert(const_iterator pos, value_type&& value);
+        // iterator insert(const_iterator pos, size_type count, const_reference value);
+        // iterator insert(const_iterator pos, size_type count, value_type&& value);
 
         template <typename... Args>
         iterator emplace(const_iterator pos, Args&&... args);
@@ -179,7 +180,7 @@ namespace rzt {
         void erase(iterator_type pos);
 
         void push_back(const_reference value); // T -> CopyInsertable && MoveInsertable
-        //void push_back(value_type&& value);
+        // void push_back(value_type&& value);
 
         template <typename... Args>
         reference emplace_back(Args&&... args);
@@ -237,12 +238,21 @@ namespace rzt {
     void vector<T, Allocator>::reserve(size_t new_capacity) {
         if (new_capacity < size())
             return;
+        T* new_storage;
+        try {
+            new_storage = allocator_traits::allocate(allocator, new_capacity); // possible exception
+        } catch (...) {
+            throw;
+        }
 
-        T* new_storage = allocator_traits::allocate(allocator, new_capacity); // possible exception
         size_type i = 0;
         try {
             for (; i < new_capacity; ++i) {
-                allocator_traits::construct(allocator, new_storage + i, T());
+                if (i < size()) {
+                    allocator_traits::construct(allocator, new_storage + i, *(data_start_ + i));
+                } else {
+                    allocator_traits::construct(allocator, new_storage + i, T());
+                }
             }
         } catch (...) {
             for (size_t j = 0; j < i; ++j) {
@@ -264,13 +274,32 @@ namespace rzt {
     template <typename T, typename Allocator>
     void vector<T, Allocator>::push_back(const_reference value) {
         if (data_end_ == storage_end_) {
-            if (capacity() > 0) {
-                reserve(2 * capacity());
-            } else {
-                reserve(1);
-            }
+            capacity() > 0 ? reserve(capacity() * 2) : reserve(1);
         }
         allocator_traits::construct(allocator, data_end_++, value);
+    }
+
+    template <typename T, typename Allocator>
+    typename vector<T, Allocator>::iterator vector<T, Allocator>::insert(const_iterator pos, const_reference value) {
+
+        const size_type index = pos - begin();
+
+        if (this->data_end_ == this->storage_end_) {
+            capacity() > 0 ? reserve(2 * capacity()) : reserve(1);
+        } //pos invalid after this => use index-logic only
+
+        if (begin() + index == end()) {
+            allocator_traits::construct(allocator, this->data_end_, value);
+            ++this->data_end_;
+        } else {
+            for (size_type i = size() - 1; i >= index; --i) {
+                allocator_traits::construct(allocator, this->data_start_ + i + 1, *(this->data_start_ + i));
+            }
+            allocator_traits::construct(allocator, this->data_start_ + index, value);
+            ++this->data_end_;
+        }
+
+        return this->data_start_ + index;
     }
 
     template <typename T, typename Allocator>
@@ -305,10 +334,10 @@ namespace rzt {
 
     template <typename T, typename Allocator>
     void vector<T, Allocator>::clear() {
-       for (int i = 0; i < size(); ++i) {
+        for (int i = 0; i < size(); ++i) {
             allocator_traits::destroy(allocator, data_start_ + i);
-       } 
-       data_end_ = data_start_;
+        }
+        data_end_ = data_start_;
     }
 
     template <typename T, typename Allocator>

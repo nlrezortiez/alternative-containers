@@ -1,6 +1,7 @@
 #include "../lib/rzt_stack.hpp"
 #include "../lib/rzt_vector.hpp"
 
+#include <memory>
 #include <string>
 #include <vector>
 #include <iostream>
@@ -11,15 +12,15 @@
 
 template <typename T>
 void sandbox() {
-    
-    std::string string = "jopa";
-    std::string string1 = "jopa2";
-    rzt::vector<T> v;
-    for (int i = 0; i < 6; ++i) {
-        v.push_back(string);
-        std::cout << v.capacity() << " " << v.size() << std::endl;
+    rzt::vector<T> v1;
+    v1.push_back("index0");
+    v1.push_back("index1");
+    v1.push_back("index2");
+    v1.push_back("index3");
+    v1.insert(v1.begin() + 2, "inserted");
+    for (const auto& string : v1) {
+        std::cout << string << std::endl;
     }
-    std::cout << v[2];
 }
 
 int main(int argc, char *argv[]) {
