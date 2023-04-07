@@ -110,6 +110,10 @@ public:
         return common_iterator(rhs + lhs);
     }
 
+    pointer base() const {
+        return ptr_;
+    }
+
 private:
     T* ptr_;
 };
