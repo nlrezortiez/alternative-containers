@@ -4,9 +4,10 @@
 
 #include <memory>
 #include <stdexcept>
+#include <initializer_list>
 
-// TODO:     rvalue-require methods, multiple values
-// insert().
+// TODO:     exception guarantee fot erase, rvalue-require methods, multiple
+// values insert().
 //           implement constructors;
 
 namespace rzt {
@@ -28,14 +29,35 @@ public:
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
     vector() : data_start_(), data_end_(), storage_end_() {}
-    explicit vector(size_type n, const_reference value = T(),
+    explicit vector(size_type n,
+                    const_reference value = T(),
                     const Allocator& alloc = Allocator())
         : vector() {
         resize(n, value);
     }
 
-    vector(const vector& other);
-    vector(const vector& other, const Allocator& alloc);
+    vector(const vector<T, Allocator>& other) : vector() {
+        this->reserve(other.capacity());
+        try {
+            for (int i = 0; i < other.size(); ++i) {
+                this->push_back(other[i]);
+            }
+        } catch (...) { this->clear(); }
+    }
+
+    vector(vector<T, Allocator>&& other) = default;
+
+    vector(const vector<T, Allocator>& other, const Allocator& alloc)
+        : vector<T, Allocator>(other) {
+        allocator = alloc;
+    }
+
+    ~vector() {
+        for (int i = 0; i < this->size(); ++i) {
+            allocator_traits::destroy(allocator, data_start_ + i);
+        }
+        allocator_traits::deallocate(allocator, data_start_, this->capacity());
+    }
 
     iterator begin();
     iterator end();
@@ -62,8 +84,7 @@ public:
 
     size_type find(const T& value);
 
-    iterator insert(const_iterator pos, const_reference value);
-    // iterator insert(const_iterator pos, value_type&& value);
+    iterator insert(const_iterator pos, value_type value);
     // iterator insert(const_iterator pos, size_type count, const_reference
     // value); iterator insert(const_iterator pos, size_type count, value_type&&
     // value);
@@ -74,9 +95,8 @@ public:
     template <typename iterator_type>
     void erase(iterator_type pos);
 
-    void
-    push_back(const_reference value); // T -> CopyInsertable && MoveInsertable
-    // void push_back(value_type&& value);
+    void push_back(const_reference value);
+    void push_back(value_type&& value);
 
     template <typename... Args>
     reference emplace_back(Args&&... args);
@@ -153,16 +173,14 @@ void vector<T, Allocator>::reserve(size_t new_capacity) {
     try {
         new_storage = allocator_traits::allocate(
             allocator, new_capacity); // possible exception
-    } catch (...) {
-        throw;
-    }
+    } catch (...) { throw; }
 
     size_type i = 0;
     try {
         for (; i < new_capacity; ++i) {
             if (i < size()) {
-                allocator_traits::construct(allocator, new_storage + i,
-                                            *(data_start_ + i));
+                allocator_traits::construct(
+                    allocator, new_storage + i, *(data_start_ + i));
             } else {
                 allocator_traits::construct(allocator, new_storage + i, T());
             }
@@ -193,25 +211,45 @@ void vector<T, Allocator>::push_back(const_reference value) {
 }
 
 template <typename T, typename Allocator>
-typename vector<T, Allocator>::iterator
-vector<T, Allocator>::insert(const_iterator pos, const_reference value) {
+void vector<T, Allocator>::push_back(value_type&& value) {
+    if (data_end_ == storage_end_) {
+        capacity() > 0 ? reserve(this->capacity() * 2) : reserve(1);
+    }
+    allocator_traits::construct(allocator, data_end_++, std::forward(value));
+}
 
-    const size_type index = pos - begin();
+template <typename T, typename Allocator>
+template <typename... Args>
+typename vector<T, Allocator>::reference
+vector<T, Allocator>::emplace_back(Args&&... args) {
+    if (data_end_ == storage_end_) {
+        capacity() > 0 ? reserve(this->capacity() * 2) : reserve(1);
+    }
+    allocator_traits::construct(allocator, data_end_, args...);
+    return *data_end_++;
+}
+
+template <typename T, typename Allocator>
+typename vector<T, Allocator>::iterator
+vector<T, Allocator>::insert(const_iterator pos, value_type value) {
+
+    const int index = pos - begin();
 
     if (this->data_end_ == this->storage_end_) {
         capacity() > 0 ? reserve(2 * capacity()) : reserve(1);
     } // pos invalid after this => use index-logic only
 
     if (begin() + index == end()) {
-        allocator_traits::construct(allocator, this->data_end_, value);
+        allocator_traits::construct(
+            allocator, this->data_end_, std::move(value));
         ++this->data_end_;
     } else {
-        for (size_type i = size() - 1; i >= index; --i) {
-            allocator_traits::construct(allocator, this->data_start_ + i + 1,
-                                        *(this->data_start_ + i));
+        for (int i = size() - 1; i >= index; --i) {
+            allocator_traits::construct(
+                allocator, this->data_start_ + i + 1, *(this->data_start_ + i));
         }
-        allocator_traits::construct(allocator, this->data_start_ + index,
-                                    value);
+        allocator_traits::construct(
+            allocator, this->data_start_ + index, std::move(value));
         ++this->data_end_;
     }
 
@@ -252,11 +290,12 @@ template <typename T, typename Allocator>
 template <typename iterator_type>
 void vector<T, Allocator>::erase(iterator_type pos) {
     if (pos.base() < data_start_ || pos.base() > data_end_) {
-        return; //exception probably
+        return; // exception probably
     }
     size_type index = pos - this->begin();
     for (int i = index; i < size() - 1; ++i) {
-        allocator_traits::construct(allocator, data_start_ + i, *(data_start_ + i + 1));
+        allocator_traits::construct(
+            allocator, data_start_ + i, *(data_start_ + i + 1));
     }
     allocator_traits::destroy(allocator, data_end_--);
 }
